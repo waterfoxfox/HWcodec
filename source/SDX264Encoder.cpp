@@ -7,26 +7,6 @@
 //HP时为了防止DTS出现负数的情况，为PTS加上基值
 #define PTS_BASE_NUM	1000	
 
-static void pgm_save(unsigned char *buf,int wrap, int xsize,int ysize, const char *recfilename)
-{
-	FILE *f;
-	int i;
-
-	int ci=0;
-
-	static int framenum =0;
-
-
-	f=fopen(recfilename,"ab+");   
-
-	for(i=0;i<ysize;i++)
-	{
-		fwrite(buf + i * wrap, 1, xsize, f );
-
-	}
-	fclose(f);
-}
-
 static void bitstream_save(const unsigned char *buf,int size, const char *bitfilename)
 {
 	FILE *f;
@@ -50,9 +30,6 @@ CX264_Encoder::CX264_Encoder()
 	m_tExternParams.nProfile = X264_HIGH_PROFILE;
 	m_tExternParams.bEnableVbv = 1;
 	strcpy(m_tExternParams.acPreset, "slow");
-	m_bUseNaluStartCode = true;
-	m_bUse90KTimeStamp = false;
-	m_bRequestIdr = false;
 
 	m_nPtsBaseNum = 0;
 	m_nPtsStartTime = 0;
@@ -68,8 +45,7 @@ CX264_Encoder::~CX264_Encoder()
 
 }
 
-bool CX264_Encoder::Open(int nWidth, int nHeight, int nFrameRate, int bitrate, int nKeyFrameInterval, 
-						X264ExternParams *pExternParams, bool bUseNaluStartCode, bool bUse90KTimeStamp)
+bool CX264_Encoder::Open(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval, int nNaluSize, X264ExternParams *pExternParams)
 {
 	CSDMutex cs(m_pClosedCs);
 	if(m_bClosed == false)
@@ -86,13 +62,11 @@ bool CX264_Encoder::Open(int nWidth, int nHeight, int nFrameRate, int bitrate, i
 	
 	m_nPtsStartTime = 0;
 	
-	return mfOpen(nWidth, nHeight, nFrameRate, bitrate, nKeyFrameInterval, 
-				 pExternParams, bUseNaluStartCode, bUse90KTimeStamp);
+	return mfOpen(nWidth, nHeight, nFrameRate, nBitrate, nKeyFrameInterval, nNaluSize, pExternParams);
 
 }
 
-bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate, int nKeyFrameInterval, 
-						X264ExternParams *pExternParams, bool bUseNaluStartCode, bool bUse90KTimeStamp)
+bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval, int nNaluSize, X264ExternParams *pExternParams)
 {	
 
 	int nKeyInt = nKeyFrameInterval*nFrameRate;
@@ -127,10 +101,19 @@ bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate,
 	}
 	else
 	{
-		//HighProfile
-		x264_param_apply_profile(&m_ptCtx->param, "high");
-		//开启8X8
-		m_ptCtx->param.analyse.b_transform_8x8 = 1;
+		if (pExternParams->nProfile == X264_HIGH_PROFILE)
+		{
+			//HighProfile
+			x264_param_apply_profile(&m_ptCtx->param, "high");
+			//开启8X8
+			m_ptCtx->param.analyse.b_transform_8x8 = 1;
+		}
+		else
+		{
+			//MainProfile
+			x264_param_apply_profile(&m_ptCtx->param, "main");
+		}
+
 		//开启CABAC
 		m_ptCtx->param.b_cabac = 1;
 		//实时系统关闭B帧
@@ -152,8 +135,8 @@ bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate,
 	if (m_tExternParams.bEnableVbv)
 	{
 		m_ptCtx->param.rc.f_rate_tolerance   = 0.1f;
-		m_ptCtx->param.rc.i_vbv_max_bitrate  = (int)(bitrate*0.95f);
-		m_ptCtx->param.rc.i_vbv_buffer_size  = (int)(bitrate*0.95f);
+		m_ptCtx->param.rc.i_vbv_max_bitrate  = (int)(nBitrate*0.95f);
+		m_ptCtx->param.rc.i_vbv_buffer_size  = (int)(nBitrate*0.95f);
 		m_ptCtx->param.rc.f_vbv_buffer_init  = 0.5f;
 		m_ptCtx->param.rc.f_ip_factor		 = 1.0f;	
 	}
@@ -171,7 +154,7 @@ bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate,
 	m_ptCtx->param.analyse.intra			= X264_ANALYSE_I4x4 | X264_ANALYSE_I8x8 | X264_ANALYSE_PSUB16x16 
 											| X264_ANALYSE_BSUB16x16 | X264_ANALYSE_PSUB8x8;
 	//多Slice提高网络友好性
-	m_ptCtx->param.i_slice_max_size			= 900;
+	m_ptCtx->param.i_slice_max_size			= nNaluSize;
 	m_ptCtx->param.b_repeat_headers			= 1;
 
 	//关闭兼容性不佳的权重预测
@@ -181,7 +164,7 @@ bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate,
 	//关闭一些2pass相关
 	m_ptCtx->param.rc.psz_stat_out			= 0;
 	m_ptCtx->param.rc.psz_stat_in			= 0;
-	m_ptCtx->param.rc.i_bitrate				= bitrate;
+	m_ptCtx->param.rc.i_bitrate				= nBitrate;
 	m_ptCtx->param.rc.i_rc_method           = X264_RC_ABR;
 	m_ptCtx->param.rc.i_qp_min              = 15;
 	m_ptCtx->param.rc.i_qp_max              = 45;
@@ -207,14 +190,11 @@ bool CX264_Encoder::mfOpen(int nWidth, int nHeight, int nFrameRate, int bitrate,
 	
 	m_bClosed = false;
 	m_nPrevIdrTime = 0;
-	m_bUseNaluStartCode = bUseNaluStartCode;
-	m_bUse90KTimeStamp = bUse90KTimeStamp;
-	m_bRequestIdr = false;
 
 	return(true);
 }
 
-bool CX264_Encoder::Control(int nFrameRate, int bitrate, int nIdrInterval, int nWidth, int nHeight)
+bool CX264_Encoder::Control(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval,  int nNaluSize)
 {
 	CSDMutex cs(m_pClosedCs);
 	if( m_bClosed )
@@ -229,7 +209,7 @@ bool CX264_Encoder::Control(int nFrameRate, int bitrate, int nIdrInterval, int n
 		if (m_ptCtx->x264 != NULL)
 		{
 			mfClose();
-			return mfOpen(nWidth, nHeight, nFrameRate, bitrate, nIdrInterval, &m_tExternParams, m_bUseNaluStartCode, m_bUse90KTimeStamp);	
+			return mfOpen(nWidth, nHeight, nFrameRate, nBitrate, nKeyFrameInterval, nNaluSize, &m_tExternParams);	
 		}
 		else
 		{
@@ -268,7 +248,7 @@ void CX264_Encoder::mfClose()
 
 //输入一帧YUV420图像，编码为H264码流，并将NALU信息告知外层
 //返回>0 当前帧码流大小; < 0 编码错误; =0 当前无码流输出
-int CX264_Encoder::Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNaluLen, UINT unMaxNaluCnt, int64_t *pPts, int64_t *pDts)
+int CX264_Encoder::Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNaluLen, UINT unMaxNaluCnt, bool bForceIdr, int64_t *pPts, int64_t *pDts)
 {
 	int ret = -1;
 	CSDMutex cs(m_pClosedCs);
@@ -310,7 +290,7 @@ int CX264_Encoder::Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNalu
 	//初始化NALU长度数组
 	memset(pnNaluLen, 0x0, sizeof(int)*unMaxNaluCnt);
 	
-	ret = mfCompress(pucImg, stride, pucOutputStream, pnNaluLen, unMaxNaluCnt, pPts, pDts);
+	ret = mfCompress(pucImg, stride, pucOutputStream, pnNaluLen, unMaxNaluCnt, bForceIdr, pPts, pDts);
 
 	return ret;
 }
@@ -319,62 +299,26 @@ int CX264_Encoder::Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNalu
 int CX264_Encoder::mfDumpnals (x264_nal_t *nal, int nals, unsigned char *pucOutputStream, int *pnNaluLen)
 {
 	int i_total_size = 0;
-	static BYTE byHeadLong[] = {0x00, 0x00, 0x00, 0x01};
-	static BYTE byHeadShort[] = {0x00, 0x00, 0x01};
 #if 0	
 	for (int i = 0; i < nals; i++) 
 	{
 		bitstream_save(nal[i].p_payload, nal[i].i_payload, "D://stst.h264");
 	}
 #endif
-	if (m_bUseNaluStartCode == true)
-	{
-		//输出带NALU起始码
-		for (int i = 0; i < nals; i++) 
-		{
-			memcpy(pucOutputStream, nal[i].p_payload, nal[i].i_payload);
-			pucOutputStream += nal[i].i_payload;
-			i_total_size += nal[i].i_payload; 
-			pnNaluLen[i] = nal[i].i_payload;
-		}
-	}
-	else
-	{
-		//输出不带NALU起始码
-		for (int i = 0; i < nals; i++) 
-		{
-			int nCopySize = 0;
-			if(memcmp(byHeadLong, nal[i].p_payload, sizeof(byHeadLong)) == 0)
-			{
-				//长头
-				nCopySize = nal[i].i_payload - sizeof(byHeadLong);
-				memcpy(pucOutputStream, nal[i].p_payload + sizeof(byHeadLong), nCopySize);
-				pucOutputStream += nCopySize;
-				i_total_size += nCopySize; 
-				pnNaluLen[i] = nCopySize;
-			}
-			else if(memcmp(byHeadShort, nal[i].p_payload, sizeof(byHeadShort)) == 0)
-			{
-				//短头
-				nCopySize = nal[i].i_payload - sizeof(byHeadShort);
-				memcpy(pucOutputStream, nal[i].p_payload + sizeof(byHeadShort), nCopySize);
-				pucOutputStream += nCopySize;
-				i_total_size += nCopySize; 
-				pnNaluLen[i] = nCopySize;
-			}
-			else
-			{
-				//非法的NALU，不输出
-				SDLOG_PRINTF("CX264_Encoder", SD_LOG_LEVEL_ERROR, "Invalid NALU was found!!!!!!!!!!!!!!");
-			}
 
-		}
+	//输出带NALU起始码
+	for (int i = 0; i < nals; i++) 
+	{
+		memcpy(pucOutputStream, nal[i].p_payload, nal[i].i_payload);
+		pucOutputStream += nal[i].i_payload;
+		i_total_size += nal[i].i_payload; 
+		pnNaluLen[i] = nal[i].i_payload;
 	}
 
 	return(i_total_size);
 }
 
-int CX264_Encoder::mfCompress (unsigned char *data[4], int stride[4], unsigned char *pRetData, int *pnRetLen, UINT unMaxBlkCnt, int64_t *pPts, int64_t *pDts)
+int CX264_Encoder::mfCompress (unsigned char *data[4], int stride[4], unsigned char *pRetData, int *pnRetLen, UINT unMaxBlkCnt, bool bForceIdr, int64_t *pPts, int64_t *pDts)
 {
 	Ctx *c = m_ptCtx;
 
@@ -398,9 +342,9 @@ int CX264_Encoder::mfCompress (unsigned char *data[4], int stride[4], unsigned c
 	//上一次编码IDR帧的时间，用于避免由于实际输入帧频不足配置的帧率，
 	//而导致长时间（大于指定的最大I帧间隔）无IDR帧的情况
 	long nCurrTime = SD_GetTickCount();
-	if ((nCurrTime - m_nPrevIdrTime >= m_nKeyFrameIntervalTime*1000) || (m_bRequestIdr == true))
+	if ((nCurrTime - m_nPrevIdrTime >= m_nKeyFrameIntervalTime*1000) || (bForceIdr == true))
 	{
-		m_bRequestIdr = false;
+		bForceIdr = false;
 		bForceIdrFrame = true;	
 		m_nPrevIdrTime = SD_GetTickCount();
 	}
@@ -451,20 +395,6 @@ int CX264_Encoder::mfCompress (unsigned char *data[4], int stride[4], unsigned c
 	}
 }
 
-//请求即刻编码IDR帧
-bool CX264_Encoder::IdrRequest()
-{
-	m_bRequestIdr = true;
-	return true;
-}
-
-//请求即刻编码IDR帧并且重新初始化时间戳
-void CX264_Encoder::ReInit()
-{
-	m_bRequestIdr = true;
-	m_nPtsStartTime = 0;
-}
-
 int64_t CX264_Encoder::mfGeneratePts()
 {
 	int64_t nNow = (int64_t)SD_GetTickCount();
@@ -474,16 +404,8 @@ int64_t CX264_Encoder::mfGeneratePts()
 		m_nPtsStartTime = nNow;
 	}
 
-	if (m_bUse90KTimeStamp)
-	{
-		//90KHZ时基
-		return (nNow - m_nPtsStartTime)*90 + m_nPtsBaseNum;
-	}
-	else
-	{
-		//1KHZ时基
-		return (nNow - m_nPtsStartTime)*1 + m_nPtsBaseNum;
-	}
+	//1KHZ时基
+	return (nNow - m_nPtsStartTime)*1 + m_nPtsBaseNum;
 }
 
 

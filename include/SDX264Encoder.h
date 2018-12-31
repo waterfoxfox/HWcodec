@@ -16,6 +16,7 @@ extern "C"
 
 #define X264_BASELINE_PROFILE					   0
 #define X264_HIGH_PROFILE						   1  	
+#define X264_MAIN_PROFILE						   2  	
 
 struct Ctx
 {
@@ -39,18 +40,12 @@ public:
 	CX264_Encoder();
 	virtual ~CX264_Encoder();
 
-	bool            Open(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval, 
-						X264ExternParams *ptExternParams, bool bUseNaluStartCode = true, bool bUse90KTimeStamp = false);
+	bool            Open(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval,  int nNaluSize, X264ExternParams *ptExternParams);
 	void            Close();
 	//输入一帧YUV420图像，编码为H264码流，并将NALU信息告知外层
 	//返回>0 当前帧码流大小; < 0 编码错误; =0 当前无码流输出
-	int             Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNaluLen, UINT unMaxNaluCnt, int64_t *pPts = NULL, int64_t *pDts = NULL);
-	bool			Control(int nFrameRate, int nBitrate, int nIdrInterval, int nWidth, int nHeight);
-
-	//请求即刻编码IDR帧
-	bool			IdrRequest();
-	//请求即刻编码IDR帧并且重新初始化时间戳
-	void			ReInit();
+	int             Encode(BYTE *pucInputYuv , BYTE *pucOutputStream, int *pnNaluLen, UINT unMaxNaluCnt, bool bForceIdr, int64_t *pPts = NULL, int64_t *pDts = NULL);
+	bool			Control(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval,  int nNaluSize);
 
 private:
 	bool				m_bClosed;
@@ -70,19 +65,12 @@ private:
 	long				m_nPrevIdrTime;
 
 	X264ExternParams	m_tExternParams;
-	//输出的NALU是否包含起始码(0x000001 0x00000001)
-	bool				m_bUseNaluStartCode;
-	//是否使用90KHZ时间戳（否则使用实际机器时间）
-	bool				m_bUse90KTimeStamp;
-	//请求编码IDR标志
-	bool				m_bRequestIdr;
 
 private:
-	bool mfOpen(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval, 
-				X264ExternParams *ptExternParams, bool bUseNaluStartCode, bool bUse90KTimeStamp);
+	bool mfOpen(int nWidth, int nHeight, int nFrameRate, int nBitrate, int nKeyFrameInterval, int nNaluSize, X264ExternParams *ptExternParams);
 	void mfClose();
 	int mfDumpnals (x264_nal_t *ptNals, int nNalsNum, BYTE *pucOutputStream, int *pnNaluLen);
-	int mfCompress (unsigned char *data[4], int stride[4], unsigned char *pRetData, int *pnRetLen, UINT unMaxBlkCnt, int64_t *pPts, int64_t *pDts);
+	int mfCompress (unsigned char *data[4], int stride[4], unsigned char *pRetData, int *pnRetLen, UINT unMaxBlkCnt, bool bForceIdr, int64_t *pPts, int64_t *pDts);
 	int64_t mfGeneratePts();	
 };
 
