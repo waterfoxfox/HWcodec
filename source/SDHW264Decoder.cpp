@@ -1,12 +1,12 @@
 //**************************************************************************
-//* °æÈ¨ËùÓĞ
+//* ç‰ˆæƒæ‰€æœ‰
 //*
-//* ÎÄ¼şÃû³Æ£ºSDHW264Decoder
-//* ÄÚÈİÕªÒª£ºÊ¹ÓÃDXVA2½Ó¿ÚµÄÓ²½âÂë·â×°£¬ÓÉÍâ²ã¸ºÔğ½Ó¿ÚËø±£»¤
-//* µ±Ç°°æ±¾£ºV1.0
-//*	ĞŞ	  ¸Ä£º		
-//* ×÷    Õß£ºmediapro
-//* Íê³ÉÈÕÆÚ£º2018-7-19
+//* æ–‡ä»¶åç§°ï¼šSDHW264Decoder
+//* å†…å®¹æ‘˜è¦ï¼šä½¿ç”¨DXVA2æ¥å£çš„ç¡¬è§£ç å°è£…ï¼Œç”±å¤–å±‚è´Ÿè´£æ¥å£é”ä¿æŠ¤
+//* å½“å‰ç‰ˆæœ¬ï¼šV1.0
+//*	ä¿®	  æ”¹ï¼š		
+//* ä½œ    è€…ï¼šmediapro
+//* å®Œæˆæ—¥æœŸï¼š2018-7-19
 //***************************************************************************/
 #include "SDCommon.h"
 #include "SDLog.h"
@@ -97,7 +97,7 @@ CH264_HW_Decoder::CH264_HW_Decoder()
 	m_hwDeviceCtx = NULL;
 	m_hwPixFmt = AV_PIX_FMT_NONE;
 
-	//ÓÃÓÚÊ¹ÓÃ¶ÔÆë·½Ê½´æ·ÅÊäÈëµÄÂëÁ÷Êı¾İ
+	//ç”¨äºä½¿ç”¨å¯¹é½æ–¹å¼å­˜æ”¾è¾“å…¥çš„ç æµæ•°æ®
 	m_pnInputBuff = (int*)malloc(1024*sizeof(int)*512); 
 }
 
@@ -113,7 +113,7 @@ CH264_HW_Decoder::~CH264_HW_Decoder()
 	}
 }
 
-//ÅĞ¶Ïµ±Ç°»·¾³ÊÇ·ñÖ§³ÖÓ²½âÂë
+//åˆ¤æ–­å½“å‰ç¯å¢ƒæ˜¯å¦æ”¯æŒç¡¬è§£ç 
 bool CH264_HW_Decoder::IsHwAcclSupported(void)
 {
 	enum AVHWDeviceType type = av_hwdevice_find_type_by_name("dxva2");
@@ -196,7 +196,7 @@ bool CH264_HW_Decoder::IsHwAcclSupported(void)
 
 bool CH264_HW_Decoder::Open(int nWidth, int nHeight, DecodeOutputImageType eOutputType)
 {
-	//WindowsÆ½Ì¨Ê¹ÓÃDXVA2½Ó¿Ú
+	//Windowså¹³å°ä½¿ç”¨DXVA2æ¥å£
 	enum AVHWDeviceType type = av_hwdevice_find_type_by_name("dxva2");
 	m_hwPixFmt = find_fmt_by_hw_type(type);
 	if (m_hwPixFmt == AV_PIX_FMT_NONE) 
@@ -316,7 +316,7 @@ void CH264_HW_Decoder::Close()
 
 }
 
-//´óÓÚ0£¬½âÂë³É¹¦
+//å¤§äº0ï¼Œè§£ç æˆåŠŸ
 int CH264_HW_Decoder::Decode(const void *data, UINT size, void *pRetBuf, int* pnWidth, int* pnHeight)
 {
 #ifndef ANDROID
@@ -470,7 +470,7 @@ int CH264_HW_Decoder::avcodec_decode_video_hw(AVCodecContext *avctx, AVFrame *sw
 
 		if (frame->format == m_hwPixFmt)
 		{
-			//´ÓÏÔ´æ¿½±´µ½ÄÚ´æ
+			//ä»æ˜¾å­˜æ‹·è´åˆ°å†…å­˜
 			if ((ret = av_hwframe_transfer_data(sw_frame, frame, 0)) < 0) 
 			{
 				SDLOG_PRINTF("CX264_Decoder", SD_LOG_LEVEL_ERROR, "Error transferring the data to system memory, ret:%d", ret);
@@ -489,7 +489,7 @@ fail:
 	return 0;
 }
 
-//ÊäÈëÒ»Ö¡ÂëÁ÷½âÂëºóÊä³ö
+//è¾“å…¥ä¸€å¸§ç æµè§£ç åè¾“å‡º
 int CH264_HW_Decoder::mf_hw_decode_dec(const BYTE* in_buf_IN, int in_buf_size, BYTE *out_buf, int* pnWidth, int* pnHeight)
 {
 	static BYTE byHeadLong[] = {0x00, 0x00, 0x00, 0x01};
@@ -499,7 +499,7 @@ int CH264_HW_Decoder::mf_hw_decode_dec(const BYTE* in_buf_IN, int in_buf_size, B
 	AVPacket avpkt;
 	BYTE* in_buf = NULL;
 	
-	//¿½±´µ½×Ö½Ú¶ÔÆëµÄÄÚ´æÇø£¬Î²¶Î³õÊ¼»¯0
+	//æ‹·è´åˆ°å­—èŠ‚å¯¹é½çš„å†…å­˜åŒºï¼Œå°¾æ®µåˆå§‹åŒ–0
 	memset(m_pnInputBuff, 0x0, sizeof(int)*1024*512);
 	if (in_buf_size > (int)(sizeof(int)*1024*512))
 	{
@@ -513,17 +513,17 @@ int CH264_HW_Decoder::mf_hw_decode_dec(const BYTE* in_buf_IN, int in_buf_size, B
     memset(&avpkt, 0, sizeof(AVPacket));
 	av_init_packet(&avpkt);
 	
-	//·µ»ØÖµ£¬ 0ÎŞÊı¾İÊä³ö ÕıÊı±íÊ¾½âÂëÍ¼ÏñÖ¡´óĞ¡
+	//è¿”å›å€¼ï¼Œ 0æ— æ•°æ®è¾“å‡º æ­£æ•°è¡¨ç¤ºè§£ç å›¾åƒå¸§å¤§å°
 	int iRet = 0;
 	
-	//ĞŞ¸ÄÎªNALU¸ñÊ½ºó£¬ĞÂµÄÂëÁ÷Í·Ğ£Ñé
+	//ä¿®æ”¹ä¸ºNALUæ ¼å¼åï¼Œæ–°çš„ç æµå¤´æ ¡éªŒ
 	if (in_buf_size <= 5)
 	{
 		SDLOG_PRINTF("CX264_Decoder", SD_LOG_LEVEL_ERROR, "Invalid NALU with too short:%d Head!", in_buf_size);
 		return 0;		
 	}
 
-	//ÊäÈëÂëÁ÷²»ÍêÕû
+	//è¾“å…¥ç æµä¸å®Œæ•´
 	if( (memcmp(byHeadLong, in_buf, sizeof(byHeadLong)) != 0) && (memcmp(byHeadShort, in_buf, sizeof(byHeadShort)) != 0))
 	{
 		SDLOG_PRINTF("CX264_Decoder", SD_LOG_LEVEL_ERROR, "Invalid NALU Head!!!");
@@ -539,11 +539,11 @@ int CH264_HW_Decoder::mf_hw_decode_dec(const BYTE* in_buf_IN, int in_buf_size, B
 
 		if(avpkt.size > 0)
 		{
-			//Ó²½âÂë
+			//ç¡¬è§£ç 
 			avcodec_decode_video_hw(m_ctx, m_picture, &got_picture, &avpkt);
 			if(got_picture > 0)
 			{
- 				if (m_picture->width*m_picture->height < m_ctx->width*m_ctx->height)
+ 				if (m_picture->width*m_picture->height != m_ctx->width*m_ctx->height)
  				{
  					continue;
  				}
@@ -578,7 +578,7 @@ int CH264_HW_Decoder::mf_hw_decode_dec(const BYTE* in_buf_IN, int in_buf_size, B
 		}
    }
 
-	//ÔÚ½âÂë³öÍ¼ÏñÊ±£¬¸æÖ®Íâ½çÍ¼ÏñµÄ¿í¸ß
+	//åœ¨è§£ç å‡ºå›¾åƒæ—¶ï¼Œå‘Šä¹‹å¤–ç•Œå›¾åƒçš„å®½é«˜
 	if ((pnWidth != NULL) && (pnHeight != NULL))
 	{
 		*pnHeight = m_ctx->height;
