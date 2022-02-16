@@ -1,12 +1,12 @@
 //**************************************************************************
-//* °æÈ¨ËùÓĞ
+//* ç‰ˆæƒæ‰€æœ‰
 //*
-//* ÎÄ¼şÃû³Æ£ºSDX264Decoder
-//* ÄÚÈİÕªÒª£ºÊ¹ÓÃffmpeg½Ó¿ÚµÄÈíH264½âÂë·â×°£¬ÓÉÍâ²ã¸ºÔğ½Ó¿ÚËø±£»¤
-//* µ±Ç°°æ±¾£ºV1.0
-//*	ĞŞ	  ¸Ä£º		
-//* ×÷    Õß£ºmediapro
-//* Íê³ÉÈÕÆÚ£º
+//* æ–‡ä»¶åç§°ï¼šSDX264Decoder
+//* å†…å®¹æ‘˜è¦ï¼šä½¿ç”¨ffmpegæ¥å£çš„è½¯H264è§£ç å°è£…ï¼Œç”±å¤–å±‚è´Ÿè´£æ¥å£é”ä¿æŠ¤
+//* å½“å‰ç‰ˆæœ¬ï¼šV1.0
+//*	ä¿®	  æ”¹ï¼š		
+//* ä½œ    è€…ï¼šmediapro
+//* å®Œæˆæ—¥æœŸï¼š
 //***************************************************************************/
 #include "SDCommon.h"
 #include "SDLog.h"
@@ -21,7 +21,7 @@ CX264_Decoder::CX264_Decoder()
     m_picture = NULL;
 	m_h264Parser = NULL; 
 	m_eOutputType = DEC_OUTPUT_YUV420;
-	//ÓÃÓÚÊ¹ÓÃ¶ÔÆë·½Ê½´æ·ÅÊäÈëµÄNALUÂëÁ÷Êı¾İ
+	//ç”¨äºä½¿ç”¨å¯¹é½æ–¹å¼å­˜æ”¾è¾“å…¥çš„NALUç æµæ•°æ®
 	m_piInputBuff = (int*)malloc(1024*sizeof(int)*512); 
 }
 
@@ -231,7 +231,7 @@ int CX264_Decoder::x264_dec(const BYTE* in_buf_IN, int in_buf_size, BYTE *out_bu
 	AVPacket avpkt;
 	BYTE* in_buf = NULL;
 	
-	//¿½±´µ½×Ö½Ú¶ÔÆëµÄÄÚ´æÇø£¬Î²¶Î³õÊ¼»¯0
+	//æ‹·è´åˆ°å­—èŠ‚å¯¹é½çš„å†…å­˜åŒºï¼Œå°¾æ®µåˆå§‹åŒ–0
 	memset(m_piInputBuff, 0x0, sizeof(int)*1024*512);
 	if (in_buf_size > (int)(sizeof(int)*1024*512))
 	{
@@ -245,11 +245,11 @@ int CX264_Decoder::x264_dec(const BYTE* in_buf_IN, int in_buf_size, BYTE *out_bu
     memset(&avpkt, 0, sizeof(AVPacket));
 	av_init_packet(&avpkt);
 	
-	//·µ»ØÖµ£¬ 0ÎŞÊı¾İÊä³ö ÕıÊı±íÊ¾½âÂëÍ¼ÏñÖ¡´óĞ¡
+	//è¿”å›å€¼ï¼Œ 0æ— æ•°æ®è¾“å‡º æ­£æ•°è¡¨ç¤ºè§£ç å›¾åƒå¸§å¤§å°
 	int iRet = 0;
 	//bitstream_save(in_buf, in_buf_size, "D:\\recv.264");
 	
-	//ĞŞ¸ÄÎªNALU¸ñÊ½ºó£¬ĞÂµÄÂëÁ÷Í·Ğ£Ñé
+	//ä¿®æ”¹ä¸ºNALUæ ¼å¼åï¼Œæ–°çš„ç æµå¤´æ ¡éªŒ
 	if (in_buf_size <= 5)
 	{
 		SDLOG_PRINTF("CX264_Decoder", SD_LOG_LEVEL_ERROR, "Invalid NALU with too short Head!!!");
@@ -275,7 +275,7 @@ int CX264_Decoder::x264_dec(const BYTE* in_buf_IN, int in_buf_size, BYTE *out_bu
 			if(got_picture > 0)
 			{
 
- 				if (m_picture->width*m_picture->height < m_ctx->width*m_ctx->height)
+ 				if (m_picture->width*m_picture->height != m_ctx->width*m_ctx->height)
  				{
  					continue;
  				}
@@ -311,7 +311,7 @@ int CX264_Decoder::x264_dec(const BYTE* in_buf_IN, int in_buf_size, BYTE *out_bu
 		}
 	}
 
-	//ÔÚ½âÂë³öÍ¼ÏñÊ±£¬¸æÖ®Íâ½çÍ¼ÏñµÄ¿í¸ß
+	//åœ¨è§£ç å‡ºå›¾åƒæ—¶ï¼Œå‘Šä¹‹å¤–ç•Œå›¾åƒçš„å®½é«˜
 	if ((pnWidth != NULL) && (pnHeight != NULL))
 	{
 		*pnHeight = m_ctx->height;
