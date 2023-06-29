@@ -5,3 +5,5 @@ hardware codec for windows using ffmpeg (nvi qsv enc\dxva2 dec)
 ## API接口：
 请参考HwCodecSdk.h
 
+更多资源见： https://mediapro.apifox.cn/
+
